@@ -3,53 +3,49 @@ jobs:
   build_lineage:
     machine:
       image: ubuntu-2204:current
-    # MAX POWER: 16 CPUs, 64GB RAM to prevent Error 139
     resource_class: 2xlarge
     steps:
       - checkout
       - run:
-          name: 1. Install Build Dependencies
+          name: step1
           command: |
             sudo apt-get update
-            sudo apt-get install -y bc bison build-essential curl flex g++-multilib gcc-multilib git gnupg gperf lib32ncurses5-dev lib32readline-dev lib32z1-dev liblz4-tool libncurses5 libncurses5-dev libsdl1.2-dev libssl-dev libxml2 libxml2-utils lzop pngcrush rsync schedtool squashfs-tools xsltproc zip zlib1g-dev python3
+            sudo apt-get install -y bc bison build-essential curl flex g++-multilib gcc-multilib git gnupg gperf lib32ncurses5-dev lib32readline-dev lib32z1-dev liblz4-tool libncurses5 libncurses5-dev libsdl1.2-dev libssl-dev libxml2 libxml2-utils lzop pngcrush rsync schedtool squashfs-tools xsltproc zip zlib1g-dev python3 ccache
             mkdir -p ~/bin
             curl https://storage.googleapis.com/git-repo-downloads/repo > ~/bin/repo
             chmod a+x ~/bin/repo
       - run:
-          name: 2. Sync LineageOS 19.1 (Android 12) Source
+          name: step2
           no_output_timeout: 1h
           command: |
             export PATH="$HOME/bin:$PATH"
             git config --global user.email "build@circleci.com"
             git config --global user.name "CircleCI"
             mkdir android && cd android
-            repo init -u https://github.com/LineageOS/android.git -b lineage-19.1 --depth=1
-            
-            # Local Manifest for Samsung A9 (2018)
+            repo init -u https://github.com/LineageOS/android.git -b lineage-18.1 --depth=1
             mkdir -p .repo/local_manifests
             echo '<?xml version="1.0" encoding="UTF-8"?>
             <manifest>
-              <project name="DA-S-CH/android_device_samsung_a9y18qlte" path="device/samsung/a9y18qlte" remote="github" revision="lineage-19.1" />
-              <project name="DA-S-CH/android_kernel_samsung_sdm660" path="kernel/samsung/sdm660" remote="github" revision="lineage-19.1" />
-              <project name="TheMuppets/proprietary_vendor_samsung" path="vendor/samsung" remote="github" revision="lineage-19.1" />
+                <remote name="doll" fetch="https://github.com/majaahh" revision="lineage-18.1" />
+                <remote name="los" fetch="https://github.com/LineageOS" revision="lineage-18.1" />
+                <project path="device/samsung/a9y18qlte" name="device_samsung_a9y18qlte" remote="doll" />
+                <project path="kernel/samsung/a9y18qlte" name="kernel_samsung_a9y18qlte" remote="doll" revision="aosp" />
+                <project path="vendor/samsung/a9y18qlte" name="vendor_samsung_a9y18qlte" remote="doll" />
+                <project path="device/samsung_slsi/sepolicy" name="android_device_samsung_slsi_sepolicy" remote="los" />
+                <project path="hardware/samsung" name="android_hardware_samsung" remote="los" />
             </manifest>' > .repo/local_manifests/a9y18qlte.xml
-            
             repo sync -c -j$(nproc --all) --force-sync --no-clone-bundle --no-tags
       - run:
-          name: 3. Start Compilation
+          name: step3
           no_output_timeout: 4h
           command: |
             export PATH="$HOME/bin:$PATH"
             export USE_CCACHE=1
-            export CCACHE_EXEC=/usr/bin/ccache
             cd android
-            # Clean up repo data to save disk space before building
             rm -rf .repo
-            # Initialize build environment
             source build/envsetup.sh
             lunch lineage_a9y18qlte-userdebug
-            # Build the "bacon" (the flashable .zip)
             mka bacon -j$(nproc --all)
       - store_artifacts:
-          path: android/out/target/product/a9y18qlte/lineage-*.zip
+          path: android/out/target/product/a9y18qlte/
           destination: LineageOS_A9_Build
