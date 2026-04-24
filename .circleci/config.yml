@@ -1,0 +1,45 @@
+version: 2.1
+jobs:
+  build_lineage:
+    machine:
+      image: ubuntu-2204:current
+    resource_class: large
+    steps:
+      - checkout
+      - run:
+          name: Dependencies & Repo Tool
+          command: |
+            sudo apt-get update
+            sudo apt-get install -y bc bison build-essential curl flex g++-multilib gcc-multilib git gnupg gperf lib32ncurses5-dev lib32readline-dev lib32z1-dev liblz4-tool libncurses5 libncurses5-dev libsdl1.2-dev libssl-dev libxml2 libxml2-utils lzop pngcrush rsync schedtool squashfs-tools xsltproc zip zlib1g-dev
+            mkdir -p ~/bin
+            curl https://storage.googleapis.com/git-repo-downloads/repo > ~/bin/repo
+            chmod a+x ~/bin/repo
+      - run:
+          name: Sync Source (Android 12)
+          no_output_timeout: 45m
+          command: |
+            export PATH="$HOME/bin:$PATH"
+            git config --global user.email "you@example.com"
+            git config --global user.name "YourName"
+            mkdir android && cd android
+            repo init -u https://github.com/LineageOS/android.git -b lineage-19.1 --depth=1
+            
+            # Setup Local Manifest for A9 2018
+            mkdir -p .repo/local_manifests
+            echo '<?xml version="1.0" encoding="UTF-8"?>
+            <manifest>
+              <project name="DA-S-CH/android_device_samsung_a9y18qlte" path="device/samsung/a9y18qlte" remote="github" revision="lineage-19.1" />
+              <project name="DA-S-CH/android_kernel_samsung_sdm660" path="kernel/samsung/sdm660" remote="github" revision="lineage-19.1" />
+              <project name="TheMuppets/proprietary_vendor_samsung" path="vendor/samsung" remote="github" revision="lineage-19.1" />
+            </manifest>' > .repo/local_manifests/a9y18qlte.xml
+            
+            repo sync -c -j$(nproc --all) --force-sync --no-clone-bundle --no-tags
+      - run:
+          name: Compile ROM
+          no_output_timeout: 3h
+          command: |
+            export PATH="$HOME/bin:$PATH"
+            cd android
+            source build/envsetup.sh
+            lunch lineage_a9y18qlte-userdebug
+            mka bacon -j$(nproc --all)
