@@ -3,7 +3,7 @@ jobs:
   build_lineage:
     machine:
       image: ubuntu-2204:current
-    resource_class: 2xlarge
+    resource_class: large
     steps:
       - checkout
       - run:
