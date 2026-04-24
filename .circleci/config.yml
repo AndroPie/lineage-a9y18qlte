@@ -49,3 +49,9 @@ jobs:
       - store_artifacts:
           path: android/out/target/product/a9y18qlte/
           destination: LineageOS_A9_Build
+
+# THIS PART WAS MISSING:
+workflows:
+  build_workflow:
+    jobs:
+      - build_lineage
