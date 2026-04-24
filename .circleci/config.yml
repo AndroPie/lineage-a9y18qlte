@@ -1,52 +1,25 @@
 version: 2.1
+
 jobs:
   build_lineage:
-    machine:
-      image: ubuntu-2204:current
+    docker:
+      - image: cimg/android:2023.10
     resource_class: large
     steps:
       - checkout
       - run:
-          name: "Setup Environment and Swap"
+          name: Setup Environment and Sync
           command: |
-            sudo fallocate -l 16G /swapfile
-            sudo chmod 600 /swapfile
-            sudo mkswap /swapfile
-            sudo swapon /swapfile
-            
-            export DEBIAN_FRONTEND=noninteractive
-            sudo apt-get update
-            sudo apt-get install -y -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" bc bison build-essential curl flex g++-multilib gcc-multilib git gnupg gperf lib32ncurses5-dev lib32readline-dev lib32z1-dev liblz4-tool libncurses5 libncurses5-dev libsdl1.2-dev libssl-dev libxml2 libxml2-utils lzop pngcrush rsync schedtool squashfs-tools xsltproc zip zlib1g-dev python3 ccache
-            
             mkdir -p ~/bin
             curl https://storage.googleapis.com/git-repo-downloads/repo > ~/bin/repo
             chmod a+x ~/bin/repo
-      - run:
-          name: "Sync LineageOS Source"
-          no_output_timeout: 1h
-          command: |
             export PATH="$HOME/bin:$PATH"
-            git config --global user.email "build@circleci.com"
-            git config --global user.name "CircleCI"
             mkdir android && cd android
-            repo init -u https://github.com/LineageOS/android.git -b lineage-18.1 --depth=1
-            
-            mkdir -p .repo/local_manifests
-            echo '<?xml version="1.0" encoding="UTF-8"?>
-            <manifest>
-                <remote name="doll" fetch="https://github.com/majaahh" revision="lineage-18.1" />
-                <remote name="los" fetch="https://github.com/LineageOS" revision="lineage-18.1" />
-                <project path="device/samsung/a9y18qlte" name="device_samsung_a9y18qlte" remote="doll" />
-                <project path="kernel/samsung/a9y18qlte" name="kernel_samsung_a9y18qlte" remote="doll" revision="aosp" />
-                <project path="vendor/samsung/a9y18qlte" name="vendor_samsung_a9y18qlte" remote="doll" />
-                <project path="device/samsung_slsi/sepolicy" name="android_device_samsung_slsi_sepolicy" remote="los" />
-                <project path="hardware/samsung" name="android_hardware_samsung" remote="los" />
-            </manifest>' > .repo/local_manifests/a9y18qlte.xml
-            
+            repo init -u https://github.com/LineageOS/android.git -b lineage-18.1 --git-lfs
             repo sync -c -j$(nproc --all) --force-sync --no-clone-bundle --no-tags
       - run:
-          name: "Compile Android Image"
-          no_output_timeout: 4h
+          name: Compile Android Image
+          no_output_timeout: 60m
           command: |
             export PATH="$HOME/bin:$PATH"
             export USE_CCACHE=1
@@ -57,9 +30,9 @@ jobs:
             mka bacon -j$(nproc --all)
       - store_artifacts:
           path: android/out/target/product/a9y18qlte/
-          destination: LineageOS_A9_Build
+          destination: lineage_build_output
 
 workflows:
-  build_workflow:
+  build_and_deploy:
     jobs:
       - build_lineage
