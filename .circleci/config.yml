@@ -43,3 +43,8 @@ jobs:
             source build/envsetup.sh
             lunch lineage_a9y18qlte-userdebug
             mka bacon -j$(nproc --all)
+workflows:
+  version: 2
+  build:
+    jobs:
+      - build_lineage
