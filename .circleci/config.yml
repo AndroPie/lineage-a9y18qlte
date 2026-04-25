@@ -45,9 +45,9 @@ jobs:
                 <project path="kernel/samsung/a9y18qlte" name="kernel_samsung_a9y18qlte" remote="doll" revision="aosp" />
                 <project path="vendor/samsung/a9y18qlte" name="vendor_samsung_a9y18qlte" remote="doll" />
 
-                <project path="hardware/qcom-caf/sdm660/display" name="android_hardware_qcom_display" groups="pdk-qcom,sdm660" remote="los" revision="lineage-18.1-caf-sdm660" />
-                <project path="hardware/qcom-caf/sdm660/audio" name="android_hardware_qcom_audio" groups="pdk-qcom,sdm660" remote="los" revision="lineage-18.1-caf-sdm660" />
-                <project path="hardware/qcom-caf/sdm660/media" name="android_hardware_qcom_media" groups="pdk-qcom,sdm660" remote="los" revision="lineage-18.1-caf-sdm660" />
+                <project path="hardware/qcom-caf/sdm660/display" name="android_hardware_qcom_display" groups="pdk-qcom,sdm660" remote="los" />
+                <project path="hardware/qcom-caf/sdm660/audio" name="android_hardware_qcom_audio" groups="pdk-qcom,sdm660" remote="los" />
+                <project path="hardware/qcom-caf/sdm660/media" name="android_hardware_qcom_media" groups="pdk-qcom,sdm660" remote="los" />
                 
                 <project path="device/samsung_slsi/sepolicy" name="android_device_samsung_slsi_sepolicy" remote="los" />
                 <project path="hardware/samsung" name="android_hardware_samsung" remote="los" />
@@ -61,9 +61,8 @@ jobs:
           no_output_timeout: 60m
           command: |
             export PATH="$HOME/bin:$PATH"
-            ccache -M 30G
+            ccache -M 20G
             cd android
-            # Delete .repo to ensure enough disk space for the build output
             rm -rf .repo
             source build/envsetup.sh
             lunch lineage_a9y18qlte-userdebug
