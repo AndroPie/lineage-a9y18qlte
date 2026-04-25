@@ -12,36 +12,38 @@ jobs:
       - checkout
 
       - run:
-          name: Install Build Dependencies
+          name: Install Dependencies
           command: |
             sudo apt-get update
-            sudo apt-get install -y ccache
-            # Ensure ccache is in the path
+            sudo apt-get install -y ccache bc bison build-essential curl flex g++-multilib gcc-multilib git gnupg gperf imagemagick lib32ncurses5-dev lib32readline-dev lib32z1-dev liblz4-tool libncurses5 libncurses5-dev libsdl1.2-dev libssl-dev libxml2 libxml2-utils lzop pngcrush rsync schedtool squashfs-tools xsltproc zip zlib1g-dev
             echo 'export PATH="/usr/lib/ccache:$PATH"' >> $BASH_ENV
 
       - run:
-          name: Setup Environment and Git Identity
+          name: Setup Git & Repo
           command: |
             mkdir -p ~/bin
             curl https://storage.googleapis.com/git-repo-downloads/repo > ~/bin/repo
             chmod a+x ~/bin/repo
             git config --global user.email "builder@circleci.com"
             git config --global user.name "CircleCI Builder"
-            git config --global color.ui false
-
-      - restore_cache:
-          keys:
-            - ccache-a9y18qlte-{{ .Branch }}-{{ .Revision }}
-            - ccache-a9y18qlte-{{ .Branch }}
-            - ccache-a9y18qlte-
 
       - run:
-          name: Initialize and Sync ROM Source
+          name: Initialize and Sync
           command: |
             export PATH="$HOME/bin:$PATH"
             mkdir -p android && cd android
-            repo init -u https://github.com/LineageOS/android.git -b lineage-18.1 --git-lfs --depth=1
-            # Using -j4 to avoid Google Rate Limits (HTTP 429)
+            repo init -u https://github.com/LineageOS/android.git -b lineage-18.1 --depth=1
+            
+            mkdir -p .repo/local_manifests
+            cat \<<EOF > .repo/local_manifests/roomservice.xml
+            <?xml version="1.0" encoding="UTF-8"?>
+            <manifest>
+              <project name="LineageOS-UL/android_device_samsung_a9y18qlte" path="device/samsung/a9y18qlte" remote="github" />
+              <project name="LineageOS-UL/android_kernel_samsung_a9y18qlte" path="kernel/samsung/a9y18qlte" remote="github" />
+              <project name="LineageOS-UL/android_vendor_samsung_a9y18qlte" path="vendor/samsung/a9y18qlte" remote="github" />
+            </manifest>
+            EOF
+            
             repo sync -c -j4 --force-sync --no-clone-bundle --no-tags
 
       - run:
@@ -49,23 +51,18 @@ jobs:
           no_output_timeout: 60m
           command: |
             export PATH="$HOME/bin:$PATH"
-            ccache -M 20G
+            ccache -M 30G
             cd android
             rm -rf .repo
             source build/envsetup.sh
             lunch lineage_a9y18qlte-userdebug
             mka bacon -j$(nproc --all)
 
-      - save_cache:
-          paths:
-            - .ccache
-          key: ccache-a9y18qlte-{{ .Branch }}-{{ .Revision }}
-
       - store_artifacts:
           path: android/out/target/product/a9y18qlte/
-          destination: lineage_build_output
+          destination: a9y18qlte-lineage
 
 workflows:
-  build_and_deploy:
+  build_workflow:
     jobs:
       - build_lineage
