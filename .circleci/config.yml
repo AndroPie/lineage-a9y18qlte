@@ -34,7 +34,7 @@ jobs:
             export PATH="$HOME/bin:$PATH"
             mkdir -p android && cd android
             repo init -u https://github.com/LineageOS/android.git -b lineage-18.1 --git-lfs --depth=1
-            repo sync -c -j$(nproc --all) --force-sync --no-clone-bundle --no-tags
+            repo sync -c -j4 --force-sync --no-clone-bundle --no-tags
 
       - run:
           name: Compile Android Image
