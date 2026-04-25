@@ -5,29 +5,54 @@ jobs:
     docker:
       - image: cimg/android:2023.10
     resource_class: large
+    environment:
+      USE_CCACHE: 1
+      CCACHE_DIR: /home/circleci/project/.ccache
+      CCACHE_EXEC: /usr/bin/ccache
     steps:
       - checkout
+
       - run:
-          name: Setup Environment and Sync
+          name: Setup Environment and Git Identity
           command: |
             mkdir -p ~/bin
             curl https://storage.googleapis.com/git-repo-downloads/repo > ~/bin/repo
             chmod a+x ~/bin/repo
+            git config --global user.email "builder@circleci.com"
+            git config --global user.name "CircleCI Builder"
+            git config --global color.ui false
+
+      - restore_cache:
+          keys:
+            - ccache-a9y18qlte-{{ .Branch }}-{{ .Revision }}
+            - ccache-a9y18qlte-{{ .Branch }}
+            - ccache-a9y18qlte-
+
+      - run:
+          name: Initialize and Sync ROM Source
+          command: |
             export PATH="$HOME/bin:$PATH"
-            mkdir android && cd android
-            repo init -u https://github.com/LineageOS/android.git -b lineage-18.1 --git-lfs
+            mkdir -p android && cd android
+            repo init -u https://github.com/LineageOS/android.git -b lineage-18.1 --git-lfs --depth=1
             repo sync -c -j$(nproc --all) --force-sync --no-clone-bundle --no-tags
+
       - run:
           name: Compile Android Image
           no_output_timeout: 60m
           command: |
             export PATH="$HOME/bin:$PATH"
-            export USE_CCACHE=1
+            ccache -M 20G
             cd android
             rm -rf .repo
             source build/envsetup.sh
             lunch lineage_a9y18qlte-userdebug
             mka bacon -j$(nproc --all)
+
+      - save_cache:
+          paths:
+            - .ccache
+          key: ccache-a9y18qlte-{{ .Branch }}-{{ .Revision }}
+
       - store_artifacts:
           path: android/out/target/product/a9y18qlte/
           destination: lineage_build_output
