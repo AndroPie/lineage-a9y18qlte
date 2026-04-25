@@ -38,9 +38,19 @@ jobs:
             cat \<<EOF > .repo/local_manifests/roomservice.xml
             <?xml version="1.0" encoding="UTF-8"?>
             <manifest>
-              <project name="LineageOS-UL/android_device_samsung_a9y18qlte" path="device/samsung/a9y18qlte" remote="github" />
-              <project name="LineageOS-UL/android_kernel_samsung_a9y18qlte" path="kernel/samsung/a9y18qlte" remote="github" />
-              <project name="LineageOS-UL/android_vendor_samsung_a9y18qlte" path="vendor/samsung/a9y18qlte" remote="github" />
+                <remote name="doll" fetch="https://github.com/majaahh" revision="lineage-18.1" />
+                <remote name="los" fetch="https://github.com/LineageOS" revision="lineage-18.1" />
+
+                <project path="device/samsung/a9y18qlte" name="device_samsung_a9y18qlte" remote="doll" />
+                <project path="kernel/samsung/a9y18qlte" name="kernel_samsung_a9y18qlte" remote="doll" revision="aosp" />
+                <project path="vendor/samsung/a9y18qlte" name="vendor_samsung_a9y18qlte" remote="doll" />
+
+                <project path="hardware/qcom-caf/sdm660/display" name="android_hardware_qcom_display" groups="pdk-qcom,sdm660" remote="los" revision="lineage-18.1-caf-sdm660" />
+                <project path="hardware/qcom-caf/sdm660/audio" name="android_hardware_qcom_audio" groups="pdk-qcom,sdm660" remote="los" revision="lineage-18.1-caf-sdm660" />
+                <project path="hardware/qcom-caf/sdm660/media" name="android_hardware_qcom_media" groups="pdk-qcom,sdm660" remote="los" revision="lineage-18.1-caf-sdm660" />
+                
+                <project path="device/samsung_slsi/sepolicy" name="android_device_samsung_slsi_sepolicy" remote="los" />
+                <project path="hardware/samsung" name="android_hardware_samsung" remote="los" />
             </manifest>
             EOF
             
@@ -53,6 +63,7 @@ jobs:
             export PATH="$HOME/bin:$PATH"
             ccache -M 30G
             cd android
+            # Delete .repo to ensure enough disk space for the build output
             rm -rf .repo
             source build/envsetup.sh
             lunch lineage_a9y18qlte-userdebug
