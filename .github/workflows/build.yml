@@ -1,0 +1,96 @@
+name: Build LineageOS 18.1 (a9y18qlte)
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-20.04
+    env:
+      CCACHE_COMPILERCHECK: "%compiler% -dumpmachine; %compiler% -dumpversion"
+      CCACHE_NOHASHDIR: "true"
+      CCACHE_HARDLINK: "true"
+      USE_CCACHE: "1"
+    steps:
+      - name: Maximize Disk Space & Setup Swap
+        uses: easimon/maximize-build-space@master
+        with:
+          root-reserve-mb: 4096
+          temp-reserve-mb: 100
+          swap-size-mb: 12288
+          remove-dotnet: 'true'
+          remove-android: 'true'
+          remove-haskell: 'true'
+          remove-codeql: 'true'
+
+      - name: Install Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y bc build-essential zip curl libstdc++6 git python2 python3 python-is-python3 libssl-dev repo ccache rsync wget
+          git config --global user.name "zrqasm"
+          git config --global user.email "zrqasm@local"
+
+      - name: Setup CCache
+        uses: actions/cache@v4
+        with:
+          path: ~/.ccache
+          key: ccache-a9y18qlte-18.1-${{ github.run_id }}
+          restore-keys: |
+            ccache-a9y18qlte-18.1-
+
+      - name: Initialize Repo
+        run: |
+          mkdir -p ~/android && cd ~/android
+          repo init -u https://github.com/LineageOS/android.git -b lineage-18.1 --depth=1
+
+      - name: Inject Local Manifest
+        run: |
+          mkdir -p ~/android/.repo/local_manifests
+          cat << 'EOF' > ~/android/.repo/local_manifests/roomservice.xml
+          <?xml version="1.0" encoding="UTF-8"?>
+          <manifest>
+            <remote name="doll" fetch="https://github.com/majaahh" revision="lineage-18.1" />
+            <remote name="los" fetch="https://github.com/LineageOS" revision="lineage-18.1" />
+
+            <project path="device/samsung/a9y18qlte" name="device_samsung_a9y18qlte" remote="doll" />
+            <project path="kernel/samsung/a9y18qlte" name="kernel_samsung_a9y18qlte" remote="doll" revision="aosp" />
+            <project path="vendor/samsung/a9y18qlte" name="vendor_samsung_a9y18qlte" remote="doll" />
+
+            <project path="hardware/qcom-caf/sdm660/display" name="android_hardware_qcom_display" groups="pdk-qcom,sdm660" remote="los" />
+            <project path="hardware/qcom-caf/sdm660/audio" name="android_hardware_qcom_audio" groups="pdk-qcom,sdm660" remote="los" />
+            <project path="hardware/qcom-caf/sdm660/media" name="android_hardware_qcom_media" groups="pdk-qcom,sdm660" remote="los" />
+            
+            <project path="device/samsung_slsi/sepolicy" name="android_device_samsung_slsi_sepolicy" remote="los" />
+            <project path="hardware/samsung" name="android_hardware_samsung" remote="los" />
+          </manifest>
+          EOF
+
+      - name: Sync Sources
+        run: |
+          cd ~/android
+          repo sync -c -j$(nproc --all) --force-sync --no-clone-bundle --no-tags --optimized-fetch --prune
+
+      - name: Build ROM
+        run: |
+          cd ~/android
+          export CCACHE_EXEC=/usr/bin/ccache
+          export CCACHE_DIR=~/.ccache
+          ccache -M 50G
+          source build/envsetup.sh
+          export WITH_DEXPREOPT=false
+          export ALLOW_MISSING_DEPENDENCIES=true
+          lunch lineage_a9y18qlte-userdebug
+          mka bacon -j$(nproc --all)
+
+      - name: Upload Build to Transfer.sh
+        if: success()
+        run: |
+          ZIP_FILE=$(find ~/android/out/target/product/a9y18qlte/ -name "lineage-*.zip" -type f | head -n 1)
+          curl --upload-file "$ZIP_FILE" https://transfer.sh/$(basename "$ZIP_FILE")
+          echo ""
+
+      - name: Upload Build Artifact
+        uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: LineageOS-18.1-a9y18qlte
+          path: ~/android/out/target/product/a9y18qlte/lineage-*.zip
