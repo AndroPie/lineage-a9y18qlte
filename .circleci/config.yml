@@ -13,17 +13,10 @@ jobs:
       - checkout
       
       - run:
-          name: "Install Build Tools & Legacy Python"
+          name: "Install Build Tools"
           command: |
             sudo apt-get update
-            sudo apt-get install -y software-properties-common
-            sudo add-apt-repository universe -y
-            sudo add-apt-repository ppa:deadsnakes/ppa -y
-            sudo apt-get update
-            sudo apt-get install -y bc build-essential zip curl libstdc++6 git python3 libssl-dev repo ccache rsync wget libncurses5 libncurses5-dev imagemagick
-            sudo apt-get install -y python2.7
-            sudo ln -sf /usr/bin/python2.7 /usr/bin/python2
-            sudo ln -sf /usr/bin/python2.7 /usr/bin/python
+            sudo apt-get install -y bc build-essential zip curl libstdc++6 git python3 libssl-dev repo ccache rsync wget libncurses5 libncurses5-dev imagemagick openjdk-11-jdk
             git config --global user.name "zrqasm"
             git config --global user.email "zrqasm@local"
 
@@ -60,6 +53,10 @@ jobs:
           no_output_timeout: 5h
           command: |
             cd ~/android
+            # Python 3 Porting: Replace legacy python calls in the build system
+            find build/tools -name "*.py" -exec sed -i 's/python/python3/g' {} +
+            find vendor/lineage/build/tools -name "*.py" -exec sed -i 's/python/python3/g' {} + || true
+            
             ccache -M 50G
             source build/envsetup.sh
             export WITH_DEXPREOPT=false
