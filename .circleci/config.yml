@@ -38,8 +38,7 @@ jobs:
             mkdir -p ~/android && cd ~/android
             repo init -u https://github.com/LineageOS/android.git -b lineage-18.1 --depth=1
             mkdir -p .repo/local_manifests
-            # Block scalar '|' ensures the shell heredoc below is NOT parsed as YAML anchors
-            cat << 'EOF' > .repo/local_manifests/roomservice.xml
+            cat \<< 'EOF' > .repo/local_manifests/roomservice.xml
             <?xml version="1.0" encoding="UTF-8"?>
             <manifest>
               <remote name="doll" fetch="https://github.com/majaahh" revision="lineage-18.1" />
